@@ -1,0 +1,134 @@
+-- FPS Booster + Chão Preto Liso (Sem Linhas Verdes) + Tela Esticada (0.78) - Delta Mobile
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Terrain = workspace:FindFirstChildOfClass("Terrain")
+local player = Players.LocalPlayer
+
+-- Limpa painéis e linhas verdes anteriores caso já estivessem rodando
+for _, parent in pairs({game:GetService("CoreGui"), player:FindFirstChild("PlayerGui")}) do
+    if parent then
+        for _, guiName in pairs({"PrimeDash_VisaoUI", "PrimeDash_StretchUI"}) do
+            if parent:FindFirstChild(guiName) then parent[guiName]:Destroy() end
+        end
+    end
+end
+for _, item in pairs(workspace:GetDescendants()) do
+    if item:IsA("SelectionBox") and item.Name == "GradeVerde_Chao" then
+        item:Destroy()
+    end
+end
+
+-- ==========================================
+-- 1. BRILHO EQUILIBRADO + FPS BOOSTER
+-- ==========================================
+local function aplicarIluminacao()
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.ShadowSoftness = 0
+    Lighting.Brightness = 1.6
+    Lighting.ClockTime = 14
+    Lighting.Ambient = Color3.fromRGB(160, 160, 160)
+    Lighting.OutdoorAmbient = Color3.fromRGB(160, 160, 160)
+end
+
+aplicarIluminacao()
+Lighting.Changed:Connect(aplicarIluminacao)
+pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+
+for _, v in pairs(Lighting:GetDescendants()) do
+    if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
+        pcall(function() v.Enabled = false end)
+    end
+end
+
+if Terrain then
+    Terrain.WaterWaveSize = 0
+    Terrain.WaterWaveSpeed = 0
+    Terrain.WaterReflectance = 0
+    Terrain.WaterTransparency = 1
+end
+
+local function ehQuebravel(obj)
+    local nome = string.lower(obj.Name)
+    local paiNome = obj.Parent and string.lower(obj.Parent.Name) or ""
+    local palavras = {"break", "crack", "rachad", "quebr", "fragil", "weak", "destruct", "damage", "hit"}
+    for _, palavra in pairs(palavras) do
+        if string.find(nome, palavra) or string.find(paiNome, palavra) then
+            return true
+        end
+    end
+    if obj:IsA("BasePart") then
+        for _, filho in pairs(obj:GetChildren()) do
+            if filho:IsA("Decal") or filho:IsA("Texture") then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function ehChao(obj)
+    if obj:FindFirstAncestorOfClass("Model") and Players:GetPlayerFromCharacter(obj:FindFirstAncestorOfClass("Model")) then
+        return false
+    end
+    local nome = string.lower(obj.Name)
+    local paiNome = obj.Parent and string.lower(obj.Parent.Name) or ""
+    if string.find(nome, "floor") or string.find(nome, "ground") or string.find(nome, "chao") or string.find(nome, "plataform") or string.find(nome, "tile") or string.find(paiNome, "floor") or string.find(paiNome, "ground") then
+        return true
+    end
+    if obj.Size.X >= 4 and obj.Size.Z >= 4 and obj.Size.Y <= 4 then
+        return true
+    end
+    return false
+end
+
+local function megaLite(obj)
+    if obj:IsA("BasePart") then
+        if obj:FindFirstAncestorOfClass("Model") and Players:GetPlayerFromCharacter(obj:FindFirstAncestorOfClass("Model")) then
+            return
+        end
+
+        obj.Material = Enum.Material.SmoothPlastic
+        obj.Reflectance = 0
+        obj.CastShadow = false
+
+        if ehQuebravel(obj) then
+            obj.Color = Color3.fromRGB(255, 220, 70)
+        elseif ehChao(obj) then
+            obj.Color = Color3.fromRGB(15, 15, 18)
+        elseif obj:IsA("MeshPart") then
+            obj.TextureID = ""
+        end
+
+    elseif obj:IsA("Decal") or obj:IsA("Texture") then
+        if not (obj.Parent and obj.Parent:IsA("BasePart")) then
+            pcall(function() obj:Destroy() end)
+        end
+    elseif obj:IsA("SurfaceAppearance") then
+        pcall(function() obj:Destroy() end)
+    elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+        obj.Enabled = false
+    end
+end
+
+for _, item in pairs(workspace:GetDescendants()) do
+    pcall(function() megaLite(item) end)
+end
+
+workspace.DescendantAdded:Connect(function(item)
+    task.wait()
+    pcall(function() megaLite(item) end)
+end)
+
+-- ==========================================
+-- 2. TELA ESTICADA (0.78)
+-- ==========================================
+local esticarVertical = 0.78
+
+RunService.RenderStepped:Connect(function()
+    local cam = workspace.CurrentCamera
+    if cam then
+        cam.CFrame = cam.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, esticarVertical, 0, 0, 0, 1)
+    end
+end)
